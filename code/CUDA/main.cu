@@ -37,41 +37,53 @@ int main(){
 
     ///////////////////////////////////////////////////////
     /*alloc & init*/
-    int* devmem; int* devmem1;
+    int* devmem; int* devmem1; int* devmem2;
     int* d_edges;
     CUDA_CHECK(cudaMalloc((void**)&d_edges, (elen+dlen)*sizeof(int)));
     CUDA_CHECK(cudaMalloc((void**)&devmem, (6*(elen-1)+2)*sizeof(int)));
     CUDA_CHECK(cudaMalloc((void**)&devmem1, (6*(elen-1)+2)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem2, (6*(elen-1)+2)*sizeof(int)));
 
     pool P0 = init_pool(elen, dlen, devmem, d_edges);
     pool P1 = init_pool(elen, dlen, devmem1, d_edges);
+    pool P2 = init_pool(elen, dlen, devmem2, d_edges);
     CUDA_CHECK(cudaMemcpy(d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
-    thread t0, t1;
+    thread t0, t1, t2;
     FILE* fp1 = fopen("result/addthread.txt","w"); 
 
     ///////////////////////////////////////////////////////
     /*compute*/
     while(P0.source<P0.numVertex){
         P0.target=P0.source+1;
-        P1.source=P0.source;
+        P1.source=P0.source; 
+        P2.source=P0.source;
         while(P0.target<P0.numVertex){
             P1.target=P0.target+1;
+            P2.target=P0.target+2;
             if(P1.target>=P0.numVertex){
                 t0=thread{compute,h_dest,h_edges,P0,fp1};
                 t0.join();
             }
-
-            else{
+            else if(P2.target>=P0.numVertex){
                 t0=thread{compute,h_dest,h_edges,P0,fp1};
                 t1=thread{compute,h_dest,h_edges,P1,fp1};
                 t0.join();
                 t1.join();
             }
-            P0.target+=2;
+            else{
+                t0=thread{compute,h_dest,h_edges,P0,fp1};
+                t1=thread{compute,h_dest,h_edges,P1,fp1};
+                t2=thread{compute,h_dest,h_edges,P2,fp1};
+                t0.join();
+                t1.join();
+                t2.join();
+            }
+            P0.target+=3;
 
             for (int i=0;i<2*P0.numVertex;i++) {
                 P0.h_visited[i] =0;
                 P1.h_visited[i] =0;
+                P2.h_visited[i] =0;
                 }
         } 
 
@@ -88,6 +100,8 @@ int main(){
     free(P0.h_returned);
     free(P1.h_label);
     free(P1.h_returned);
+    free(P2.h_label);
+    free(P2.h_returned);
     cudaDeviceReset();
     return 0;
 } 
