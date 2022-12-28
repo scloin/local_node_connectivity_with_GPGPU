@@ -46,7 +46,7 @@ int main(){
     pool P0 = init_pool(elen, dlen, devmem, d_edges);
     pool P1 = init_pool(elen, dlen, devmem1, d_edges);
     CUDA_CHECK(cudaMemcpy(d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
-
+    thread t0, t1;
     FILE* fp1 = fopen("result/addthread.txt","w"); 
 
     ///////////////////////////////////////////////////////
@@ -57,12 +57,15 @@ int main(){
         while(P0.target<P0.numVertex){
             P1.target=P0.target+1;
             if(P1.target>=P0.numVertex){
-                compute(h_dest,h_edges,P0,fp1);
+                t0=thread{compute,h_dest,h_edges,P0,fp1};
+                t0.join();
             }
 
             else{
-                compute(h_dest,h_edges,P0,fp1);
-                compute(h_dest,h_edges,P1,fp1);
+                t0=thread{compute,h_dest,h_edges,P0,fp1};
+                t1=thread{compute,h_dest,h_edges,P1,fp1};
+                t0.join();
+                t1.join();
             }
             P0.target+=2;
 
