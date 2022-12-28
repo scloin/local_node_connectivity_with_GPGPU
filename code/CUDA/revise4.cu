@@ -97,7 +97,7 @@ int main(){
     P.h_returned=(int*)malloc(sizeof(int));
     P.source=0;
     P.target=1; 
-    FILE* fp1 = fopen("result/test2.txt","w"); 
+    FILE* fp1 = fopen("result/original.txt","w"); 
     while(P.source<P.numVertex){
     P.target=P.source+1;
     while(P.target<P.numVertex){

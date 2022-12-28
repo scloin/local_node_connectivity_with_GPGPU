@@ -9,7 +9,7 @@ else:
     num =int(sys.argv[1])
     #print(N,S)
 
-f = open("./result/thread.txt", 'r')
+f = open("./result/addthread.txt", 'r')
 
 array = [[1 for col in range(row,num,1)] for row in range(1,num,1)]
 
@@ -27,7 +27,7 @@ for match in (matches):
     group2 = int(match.group(3))
     array[group0][group1-group0-1]=group2
     
-f=open("./result/thread.txt", 'w')
+f=open("./result/addthread.txt", 'w')
 for i,arr in enumerate(array,0):
     for j,val in enumerate(arr,0):
         f.write("[%d, %d] %d\n" %(i,j+i+1,val))

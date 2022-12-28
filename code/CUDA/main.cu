@@ -16,7 +16,7 @@ int main(){
 
     fscanf(fp, "%d ", &dlen);
     fscanf(fp, "%d ", &elen); 
-
+    printf("%d\n",elen);
     int *h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
     h_edges= h_data;
     h_dest= &h_data[elen];
@@ -47,7 +47,7 @@ int main(){
     CUDA_CHECK(cudaMemcpy(P0.d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
     P1.d_edges = P0.d_edges; P1.d_dest = P0.d_dest;
 
-    FILE* fp1 = fopen("result/thread.txt","w"); 
+    FILE* fp1 = fopen("result/addthread.txt","w"); 
 
     ///////////////////////////////////////////////////////
     /*compute*/

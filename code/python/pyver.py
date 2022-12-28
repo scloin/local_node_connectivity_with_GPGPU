@@ -5,7 +5,7 @@ import sys
 from networkx.algorithms.approximation import local_node_connectivity
 from networkx.algorithms.connectivity.connectivity import local_node_connectivity as lc
 
-f1 = open("./result/test1.txt", 'w')
+f1 = open("./result/pyver.txt", 'w')
 #f2 = open("./result/test0.txt", 'w')
 f = open("./graph/graph.txt", 'r')
 
@@ -34,3 +34,4 @@ for i in range(N):
         #f2.write("[%d, %d] %d\n" %(i,j,lc(G,i,j)))
 #f2.close()
 f1.close()
+f.close()
