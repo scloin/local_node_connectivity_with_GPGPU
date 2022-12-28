@@ -35,8 +35,8 @@ Thumbs.db
 
 # add for trash      #
 ######################
-trash
-.vscode
-cudagraphtest
-prof
+trash/
+.vscode/
+cudagraphtest/
+prof/
 record.txt
