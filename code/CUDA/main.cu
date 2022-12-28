@@ -38,14 +38,14 @@ int main(){
     ///////////////////////////////////////////////////////
     /*alloc & init*/
     int* devmem; int* devmem1;
+    int* d_edges;
+    CUDA_CHECK(cudaMalloc((void**)&d_edges, (elen+dlen)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem, (6*(elen-1)+2)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem1, (6*(elen-1)+2)*sizeof(int)));
 
-    CUDA_CHECK(cudaMalloc((void**)&devmem, (elen+dlen+6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem1, (elen+dlen+6*(elen-1)+2)*sizeof(int)));
-
-    pool P0 = init_pool(elen, dlen, devmem);
-    pool P1 = init_pool(elen, dlen, devmem1);
-    CUDA_CHECK(cudaMemcpy(P0.d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
-    P1.d_edges = P0.d_edges; P1.d_dest = P0.d_dest;
+    pool P0 = init_pool(elen, dlen, devmem, d_edges);
+    pool P1 = init_pool(elen, dlen, devmem1, d_edges);
+    CUDA_CHECK(cudaMemcpy(d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
 
     FILE* fp1 = fopen("result/addthread.txt","w"); 
 
@@ -79,6 +79,7 @@ int main(){
     /*free*/
     CUDA_CHECK(cudaFree(devmem));
     CUDA_CHECK(cudaFree(devmem1));
+    CUDA_CHECK(cudaFree(d_edges)); 
     free(h_data);
     free(P0.h_label);
     free(P0.h_returned);

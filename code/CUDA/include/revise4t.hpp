@@ -24,6 +24,6 @@ int degree(int* dest,int* edges,int source);
 
 int path(int* exclude, int num, int* h_dest, int* h_edges, int state, int elen); 
 
-pool init_pool(int elen, int dlen, int* devmem);
+pool init_pool(int elen, int dlen, int* devmem, int* d_edges);
 
 void compute(int* h_dest,int * h_edges, pool P,FILE* fp1);

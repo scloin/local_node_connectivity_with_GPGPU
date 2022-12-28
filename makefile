@@ -1,6 +1,6 @@
 CUDA_HOME ?= /usr/local/cuda
 EX_HOME ?= /home/deepl/sooho/test/K-com/test
-CODE_HOME ?= /home/deepl/sooho/test/K-com/test/code/
+CODE_HOME ?= /home/deepl/sooho/test/K-com/test/code
 
 all: revise4t revise4
 

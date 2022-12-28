@@ -161,22 +161,24 @@ __global__ void memset_kernel(int* d_label, int* d_visited, int* d_frontier, int
 
 }
 
-pool init_pool(int elen, int dlen, int* devmem){
+pool init_pool(int elen, int dlen, int* devmem, int* d_edges){
 
     pool P;
     CUDA_CHECK( cudaStreamCreate(&P.stream) );
     P.numVertex=elen-1;
+
+    P.d_edges=d_edges;
+    P.d_dest=&d_edges[elen];
+
     P.h_label=(int*)malloc((4*(P.numVertex)+2)*sizeof(int)); 
     P.h_visited=&(P.h_label[2*P.numVertex]);
 
-    P.d_edges=devmem;
-    P.d_dest=&(devmem[elen]);
-    P.d_label=&(devmem[dlen+elen]);
-    P.d_visited=&(devmem[dlen+elen+2*P.numVertex]);
+    P.d_label=devmem;
+    P.d_visited=&(devmem[2*P.numVertex]);
 
-    P.d_frontier=&(devmem[dlen+elen+4*P.numVertex+1]);
-    P.d_c_frontier_tail=&(devmem[dlen+elen+6*P.numVertex+1]);
-    P.d_p_frontier_tail=&(devmem[dlen+elen+4*P.numVertex]);
+    P.d_frontier=&(devmem[4*P.numVertex+1]);
+    P.d_c_frontier_tail=&(devmem[6*P.numVertex+1]);
+    P.d_p_frontier_tail=&(devmem[4*P.numVertex]);
 
     P.h_returned=(int*)malloc(sizeof(int));
     P.source=0;
