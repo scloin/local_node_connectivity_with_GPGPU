@@ -210,18 +210,20 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     while(1){ 
     
         BFS_host(P);
-        std::list<int> list;
+        //std::list<int> list;//
         int num = *P.h_returned;
         if(num==-1) {
             break;
             }
         count++;
-        std::list<int>::iterator begin_iter = list.begin();
-        std::list<int>::iterator end_iter = list.end();
-        list.insert(end_iter, num);
-        begin_iter--; 
+        //std::list<int>::iterator begin_iter = list.begin();//
+        //std::list<int>::iterator end_iter = list.end();//
+        //list.insert(end_iter, num);//
+        //begin_iter--; //
 
         int i=num; 
+        P.h_visited[i<<1]=-1;
+        P.h_visited[(i<<1)+1]=-1;
 
         for (int KK=0; KK<P.numVertex;KK++){
                 exclude_S[KK] = P.h_label[KK*2];
@@ -230,27 +232,21 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
 
         while((i>-1)){
             if(i!=num) {
-            list.insert(end_iter, i);}
+            P.h_visited[i<<1]=-1;
+            P.h_visited[(i<<1)+1]=-1;
+            }
             i = path(exclude_T,i,h_dest,h_edges,0,P.numVertex);
             } 
-
         i=num;
         while((i>-1)){
             if(i!=num) {
-            list.insert(begin_iter, i);
-            begin_iter--;}
+            P.h_visited[i<<1]=-1;
+            P.h_visited[(i<<1)+1]=-1;
+            }
             i = path(exclude_S,i,h_dest,h_edges,1,P.numVertex); 
 
             }
-        while (list.empty()==0) {
-            i=list.front();
-            P.h_visited[i<<1]=-1;
-            P.h_visited[(i<<1)+1]=-1;
-            list.pop_front(); 
-        } 
-        list.clear();
     }
     //record count
-    //std::thread::id this_id = std::this_thread::get_id();
     fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
 }
