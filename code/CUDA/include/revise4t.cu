@@ -190,6 +190,10 @@ pool init_pool(int elen, int dlen, int* devmem, int* d_edges){
 void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     int *exclude_S=(int *)malloc(P.numVertex*sizeof(int));
     int *exclude_T=(int *)malloc(P.numVertex*sizeof(int)); 
+    int init = P.target; 
+    while(P.source<P.numVertex){
+        P.target=P.source+init;
+        while(P.target<P.numVertex){
     int count=0; 
     //verify that it is connected directly
     int N = degree(h_dest,h_edges,P.source);
@@ -249,4 +253,15 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     }
     //record count
     fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
+    
+    P.target+=3;
+    for (int i=0;i<2*P.numVertex;i++) {
+        P.h_visited[i] =0;
+        }
+        }
+    P.source++;
+    }
+
+    free(exclude_S);
+    free(exclude_T);
 }

@@ -15,8 +15,7 @@ int main(){
     int * h_edges; 
 
     fscanf(fp, "%d ", &dlen);
-    fscanf(fp, "%d ", &elen); 
-    printf("%d\n",elen);
+    fscanf(fp, "%d ", &elen);
     int *h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
     h_edges= h_data;
     h_dest= &h_data[elen];
@@ -53,41 +52,19 @@ int main(){
 
     ///////////////////////////////////////////////////////
     /*compute*/
-    while(P0.source<P0.numVertex){
-        P0.target=P0.source+1;
-        P1.source=P0.source; 
-        P2.source=P0.source;
-        while(P0.target<P0.numVertex){
-            P1.target=P0.target+1;
-            P2.target=P0.target+2;
-            if(P1.target>=P0.numVertex){
-                t0=thread{compute,h_dest,h_edges,P0,fp1};
-                t0.join();
-            }
-            else if(P2.target>=P0.numVertex){
-                t0=thread{compute,h_dest,h_edges,P0,fp1};
-                t1=thread{compute,h_dest,h_edges,P1,fp1};
-                t0.join();
-                t1.join();
-            }
-            else{
-                t0=thread{compute,h_dest,h_edges,P0,fp1};
-                t1=thread{compute,h_dest,h_edges,P1,fp1};
-                t2=thread{compute,h_dest,h_edges,P2,fp1};
-                t0.join();
-                t1.join();
-                t2.join();
-            }
-            P0.target+=3;
+    P0.target=P0.source+1;
+    P1.target=P0.source+2;
+    P2.target=P0.source+3;
+    P1.source=P0.source; 
+    P2.source=P0.source;
 
-            for (int i=0;i<2*P0.numVertex;i++) {
-                P0.h_visited[i] =0;
-                P1.h_visited[i] =0;
-                P2.h_visited[i] =0;
-                }
-        } 
+    t0=thread{compute,h_dest,h_edges,P0,fp1};
+    t1=thread{compute,h_dest,h_edges,P1,fp1};
+    t2=thread{compute,h_dest,h_edges,P2,fp1};
+    t0.join();
+    t1.join();
+    t2.join();
 
-    P0.source++;}
     fclose(fp1);
 
     ///////////////////////////////////////////////////////
