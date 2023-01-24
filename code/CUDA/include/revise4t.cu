@@ -226,11 +226,18 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     int *exclude_S=(int *)malloc(P.numVertex*sizeof(int));
     int *exclude_T=(int *)malloc(P.numVertex*sizeof(int)); 
     int init = P.target; 
+<<<<<<< HEAD
     int count; int N; int* Ad; int num; int i; int j; int KK;
     while(P.source<P.numVertex){
         P.target=P.source+init;
         while(P.target<P.numVertex){
     count=0; 
+=======
+    while(P.source<P.numVertex){
+        P.target=P.source+init;
+        while(P.target<P.numVertex){
+    int count=0; 
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
     //verify that it is connected directly
     N = degree(h_dest,h_edges,P.source);
     Ad=(int*)malloc(N*sizeof(int));
@@ -249,16 +256,31 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     //loop while count every component
     while(1){ 
     
+<<<<<<< HEAD
         //BFS_host(P);
         BFS_host2(P);
         num = *P.h_returned;
+=======
+        BFS_host(P);
+        //std::list<int> list;//
+        int num = *P.h_returned;
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
         if(num==-1) {
             break;
             }
         count++;
+<<<<<<< HEAD
 
         i=num;
         j=num; 
+=======
+        //std::list<int>::iterator begin_iter = list.begin();//
+        //std::list<int>::iterator end_iter = list.end();//
+        //list.insert(end_iter, num);//
+        //begin_iter--; //
+
+        int i=num; 
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
         P.h_visited[i<<1]=-1;
         P.h_visited[(i<<1)+1]=-1;
 
@@ -267,6 +289,7 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
                 exclude_T[KK] = P.h_label[KK*2+1];
             } 
 
+<<<<<<< HEAD
         int tempi=0;
         int tempj=0;
         int error =0;
@@ -362,6 +385,22 @@ __global__ void BFS_Bqueue(int* p_frontier, int* p_frontier_tail, int* c_frontie
         *p_frontier_tail = atomicExch(c_frontier_tail, 0);
     }
 } 
+=======
+        while((i>-1)){
+            if(i!=num) {
+            P.h_visited[i<<1]=-1;
+            P.h_visited[(i<<1)+1]=-1;
+            }
+            i = path(exclude_T,i,h_dest,h_edges,0,P.numVertex);
+            } 
+        i=num;
+        while((i>-1)){
+            if(i!=num) {
+            P.h_visited[i<<1]=-1;
+            P.h_visited[(i<<1)+1]=-1;
+            }
+            i = path(exclude_S,i,h_dest,h_edges,1,P.numVertex); 
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
 
 /*
 BFS with Cuda c++, using shared memory, and warp level queue with less atomic operation
@@ -427,6 +466,7 @@ void BFS_host2(pool P)
                 check=1;
                 break;
             }
+<<<<<<< HEAD
         } 
         if(csum==0){
             check=1;
@@ -458,4 +498,20 @@ __global__ void memset_kernel2(int* d_label, int* d_visited, int S, int T, int N
                 }
     }
 
+=======
+    }
+    //record count
+    fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
+    
+    P.target+=3;
+    for (int i=0;i<2*P.numVertex;i++) {
+        P.h_visited[i] =0;
+        }
+        }
+    P.source++;
+    }
+
+    free(exclude_S);
+    free(exclude_T);
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
 }

@@ -16,9 +16,13 @@ int main(){
 
     fscanf(fp, "%d ", &dlen);
     fscanf(fp, "%d ", &elen);
+<<<<<<< HEAD
     int *h_data;
     h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
     //CUDA_CHECK(cudaMallocHost((void**)&h_data, (elen+dlen)*sizeof(int)));
+=======
+    int *h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
     h_edges= h_data;
     h_dest= &h_data[elen];
     int k =0;
@@ -62,6 +66,7 @@ int main(){
     P0.target=P0.source+1;
     P1.target=P0.source+2;
     P2.target=P0.source+3;
+<<<<<<< HEAD
     P3.target=P0.source+4;
     P1.source=P0.source; 
     P2.source=P0.source;
@@ -75,6 +80,18 @@ int main(){
     t2.join();
     t3.join();
 
+=======
+    P1.source=P0.source; 
+    P2.source=P0.source;
+
+    t0=thread{compute,h_dest,h_edges,P0,fp1};
+    t1=thread{compute,h_dest,h_edges,P1,fp1};
+    t2=thread{compute,h_dest,h_edges,P2,fp1};
+    t0.join();
+    t1.join();
+    t2.join();
+
+>>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
     fclose(fp1);
 
     ///////////////////////////////////////////////////////
