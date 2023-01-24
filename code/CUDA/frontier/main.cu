@@ -55,7 +55,7 @@ int main(){
     pool P3 = init_pool(elen, dlen, devmem3, d_edges);
     CUDA_CHECK(cudaMemcpy(d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
     thread t0, t1, t2, t3;
-    FILE* fp1 = fopen("result/addthread.txt","w"); 
+    FILE* fp1 = fopen("result/frontier.txt","w"); 
 
     ///////////////////////////////////////////////////////
     /*compute*/

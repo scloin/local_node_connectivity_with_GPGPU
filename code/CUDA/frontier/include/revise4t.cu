@@ -26,8 +26,8 @@ void BFS_host(pool P)
     while (*h_p_frontier_tail > 0&&check==0) { 
 
         num_blocks = (*h_p_frontier_tail+BLOCK_SIZE-1) / BLOCK_SIZE;
-        BFS_Bqueue_kernel<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited);
-        //BFS_Bqueue<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited);
+        // BFS_Bqueue_kernel<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited);
+        BFS_Bqueue<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited);
         
         //CUDA_CHECK(cudaMemcpy(P.h_visited, P.d_visited, (2*P.numVertex+1)*sizeof(int), cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpyAsync(P.h_label, P.d_label, (4*P.numVertex+1)*sizeof(int), cudaMemcpyDeviceToHost,P.stream)); 
@@ -250,7 +250,7 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     while(1){ 
     
         //BFS_host(P);
-        BFS_host2(P);
+        BFS_host(P);
         num = *P.h_returned;
         if(num==-1) {
             break;
@@ -362,100 +362,3 @@ __global__ void BFS_Bqueue(int* p_frontier, int* p_frontier_tail, int* c_frontie
         *p_frontier_tail = atomicExch(c_frontier_tail, 0);
     }
 } 
-
-/*
-BFS with Cuda c++, using shared memory, and warp level queue with less atomic operation
-*/
-__global__ void BFS_less_atomic(int* d_edges, int* d_dest, int* d_label, int* d_visited, int numVertex, int level){
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-    const int n = 2*numVertex;
-    if (tid < n) {
-        const int my_vertex = tid>>1;
-        const int my_state = tid&1;
-        if (d_label[tid] == level) {
-            for (int i = d_edges[my_vertex]; i < d_edges[my_vertex+1]; i++) {
-                int v = (d_dest[i]<<1)+my_state;
-                if (d_visited[v] == 0) {
-                    d_label[v] = level + 1;
-                    d_visited[v] = 1;
-                }
-            }
-        }
-    }
-}
-
-/*
-Revise of BFS_host:
-    - delete the frontier queue
-    - use BFS_less_atomic() to replace BFS_Bqueue_kernel()
-*/
-void BFS_host2(pool P)
-{
-    int S = P.source<<1;
-    int T = (P.target<<1)+1; 
-    int i; int k;
-    int num_blocks = ((2*P.numVertex)+BLOCK_SIZE-1) / BLOCK_SIZE;
-    memset_kernel2<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(P.d_label, P.d_visited, S, T, P.numVertex);
-
-    //init and copy visited
-    for (i=0;i<2*P.numVertex;i++) {
-        if(P.h_visited[i]!=-1)
-            P.h_visited[i] =0;
-        }
-    P.h_visited[S] =1;P.h_visited[T] =1; 
-    CUDA_CHECK(cudaMemcpyAsync(P.d_visited, P.h_visited, 2*P.numVertex*sizeof(int), cudaMemcpyHostToDevice,P.stream)); 
-
-    int check=0; 
-    int level = 0;
-
-    num_blocks = ((2*P.numVertex)+BLOCK_SIZE-1) / BLOCK_SIZE;
-    int csum =0;
-    while (check==0) { 
-        //cudaMemcpyAsync(d_done, &true_value, sizeof(int), cudaMemcpyHostToDevice,P.stream);
-        //CUDA_CHECK(cudaMemsetAsync(d_done, 0, sizeof(int),P.stream));
-
-        BFS_less_atomic<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(P.d_edges, P.d_dest, P.d_label, P.d_visited, P.numVertex, level);
-        cudaDeviceSynchronize();
-        CUDA_CHECK(cudaMemcpyAsync(P.h_label, P.d_label, (4*P.numVertex+1)*sizeof(int), cudaMemcpyDeviceToHost,P.stream)); 
-        
-        cudaDeviceSynchronize();
-        for(k=0;k<P.numVertex;k++){
-            if ((P.h_label[2*k]==level)||(P.h_label[2*k+1]==level)){
-                csum++;
-            };
-            if(P.h_visited[2*k]==1&&P.h_visited[2*k+1]==1&&k!=P.source&&k!=P.target){
-                check=1;
-                break;
-            }
-        } 
-        if(csum==0){
-            check=1;
-        }
-        csum=0;
-        level++;
-    }
-
-    int min = P.numVertex;
-    int meet = -1; 
-    for(k=0;k<P.numVertex;k++){
-        if(P.h_visited[2*k]==1&&P.h_visited[2*k+1]==1&&P.h_label[2*k]*P.h_label[2*k+1]!=0){
-            if(min>P.h_label[2*k]+P.h_label[2*k+1]){
-                min = P.h_label[2*k]+P.h_label[2*k+1];
-                meet =k;
-            }
-        }
-    }
-
-    *P.h_returned=meet;
-} 
-
-__global__ void memset_kernel2(int* d_label, int* d_visited, int S, int T, int NUM){
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-    if (tid < NUM*2) {
-        *(d_label+tid) = -1;
-        if (tid==S||tid==T) {
-            *(d_label+tid) = 0;
-                }
-    }
-
-}

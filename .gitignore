@@ -41,3 +41,6 @@ cudagraphtest/
 prof/
 record.txt
 result/
+graph/graph.txt
+code/exec/revise4
+code/exec/revise4t
