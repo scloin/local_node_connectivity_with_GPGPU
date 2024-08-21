@@ -51,15 +51,15 @@ pool init_pool(int elen, int dlen, int* devmem, int* d_edges){
     P.d_edges=d_edges;
     P.d_dest=&d_edges[elen];
 
-    P.h_label=(int*)malloc((4*(P.numVertex)+2)*sizeof(int)); 
-    //CUDA_CHECK(cudaMallocHost((void**)&P.h_label, (4*(P.numVertex)+2)*sizeof(int)));
+    //P.h_label=(int*)malloc((4*(P.numVertex)+2)*sizeof(int)); 
+    CUDA_CHECK(cudaMallocHost((void**)&P.h_label, (4*(P.numVertex)+2)*sizeof(int)));
     P.h_visited=&(P.h_label[2*P.numVertex]);
 
     P.d_label=devmem;
     P.d_visited=&(devmem[2*P.numVertex]);
 
-    P.d_frontier=&(devmem[4*P.numVertex+1]);
-    P.d_c_frontier_tail=&(devmem[6*P.numVertex+1]);
+    // P.d_frontier=&(devmem[4*P.numVertex+1]);
+    // P.d_c_frontier_tail=&(devmem[6*P.numVertex+1]);
     P.d_p_frontier_tail=&(devmem[4*P.numVertex]);
 
     P.h_returned=(int*)malloc(sizeof(int));
@@ -99,6 +99,8 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
         //BFS_host(P);
         BFS_host2(P);
         num = *P.h_returned;
+        // if(P.source==0&&P.target==1)
+        //     printf("\nnum = %d\n", num);
         if(num==-1) {
             break;
             }
@@ -149,7 +151,7 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
         }
     }
     //record count
-    fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
+    //fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
     
     P.target+=4;
     //P.target++;
@@ -163,52 +165,6 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     free(exclude_S);
     free(exclude_T);
 }
-
-__global__ void BFS_Bqueue(int* p_frontier, int* p_frontier_tail, int* c_frontier, int* c_frontier_tail, int* edges, int* dest, int* label, int* visited){
-    __shared__ int c_frontier_s[BLOCK_QUEUE_SIZE];
-    __shared__ int c_frontier_tail_s, our_c_frontier_tail; 
-
-    if (threadIdx.x == 0)
-        c_frontier_tail_s = 0;
-    __syncthreads(); 
-
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-    if (tid < *p_frontier_tail) {
-        const int my_vertex = p_frontier[tid]>>1;
-        const int my_state = p_frontier[tid]&1;
-        for (int i = edges[my_vertex]; i < edges[my_vertex+1]; i++) {
-            int was_visited=2;
-            if(visited[(dest[i]<<1)+my_state]!=-1)
-                was_visited = atomicExch(&(visited[(dest[i]<<1)+my_state]), 1);
-            if (!was_visited) {
-                label[(dest[i]<<1)+my_state] = label[p_frontier[tid]] + 1;
-                const int my_tail = atomicAdd(&c_frontier_tail_s, 1);
-                if (my_tail < BLOCK_QUEUE_SIZE) {
-                    c_frontier_s[my_tail] = (dest[i]<<1)+my_state;
-                }
-                else {
-                    c_frontier_tail_s = BLOCK_QUEUE_SIZE;
-                    const int my_global_tail = atomicAdd(c_frontier_tail, 1);
-                    c_frontier[my_global_tail] = (dest[i]<<1)+my_state;
-                }
-            }
-        }
-    }
-    __syncthreads(); 
-
-    if (threadIdx.x == 0) {
-        our_c_frontier_tail = atomicAdd(c_frontier_tail, c_frontier_tail_s);
-    }
-    __syncthreads(); 
-
-    for (int i = threadIdx.x; i < c_frontier_tail_s; i += blockDim.x) {
-        c_frontier[our_c_frontier_tail + i] = c_frontier_s[i];
-    }
-    //__syncthreads();
-        if (tid == 0) {
-        *p_frontier_tail = atomicExch(c_frontier_tail, 0);
-    }
-} 
 
 /*
 BFS with Cuda c++, using shared memory, and warp level queue with less atomic operation
@@ -305,4 +261,86 @@ __global__ void memset_kernel2(int* d_label, int* d_visited, int S, int T, int N
                 }
     }
 
+}
+
+void compute_test(int* h_dest,int * h_edges, pool P){
+    int *exclude_S=(int *)malloc(P.numVertex*sizeof(int));
+    int *exclude_T=(int *)malloc(P.numVertex*sizeof(int)); 
+    int count; int N; int* Ad; int num; int i; int j; int KK;
+    
+    count=0; 
+    //verify that it is connected directly
+    N = degree(h_dest,h_edges,P.source);
+    Ad=(int*)malloc(N*sizeof(int));
+    memcpy(Ad,&(h_dest[h_edges[P.source]]),N*sizeof(int)); 
+
+    //int check=0;
+    for(j = 0; j<N;j++){
+        if(Ad[j]==P.target){
+            P.h_visited[(P.source<<1)+1]=-1;
+            P.h_visited[(P.target<<1)]=-1;
+            count++; 
+        }
+    }
+    free(Ad);
+    //loop while count every component
+    while(1){ 
+    
+        //BFS_host(P);
+        BFS_host2(P);
+        num = *P.h_returned;
+        if(num==-1) {
+            break;
+            }
+        count++;
+
+        i=num;
+        j=num; 
+        P.h_visited[i<<1]=-1;
+        P.h_visited[(i<<1)+1]=-1;
+
+        for (KK=0; KK<P.numVertex;KK++){
+                exclude_S[KK] = P.h_label[KK*2];
+                exclude_T[KK] = P.h_label[KK*2+1];
+            } 
+
+        int tempi=0;
+        int tempj=0;
+        int error =0;
+        while((i>-1)||(j>-1)){
+            if(i>-1){
+                if(i!=num) {
+                P.h_visited[i<<1]=-1;
+                P.h_visited[(i<<1)+1]=-1;
+                }
+                tempi=i;
+                i = path(exclude_T,i,h_dest,h_edges,0,P.numVertex);
+                if(tempi==i){
+                    error=1;
+                    break;
+                }
+            }
+            if(j>-1){
+                if(j!=num) {
+                P.h_visited[j<<1]=-1;
+                P.h_visited[(j<<1)+1]=-1;
+                }
+                tempj=j;
+                j = path(exclude_S,j,h_dest,h_edges,1,P.numVertex);
+                if(tempj==j){
+                    error=1;
+                    break;
+                }
+            }
+        }
+        if(error==1){
+            count--;
+            break;
+        }
+    }
+    //record count
+    //fprintf(fp1,"[%d, %d] %d\n", P.source, P.target, count);
+    
+    free(exclude_S);
+    free(exclude_T);
 }

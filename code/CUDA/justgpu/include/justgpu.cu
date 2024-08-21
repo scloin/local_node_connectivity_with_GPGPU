@@ -1,17 +1,26 @@
-#include <revise4t.hpp>
+#include <justgpu.hpp>
 #define BLOCK_SIZE 512
 #define BLOCK_QUEUE_SIZE 512
+
+/*
+짝 홀 나눠 있는거 풀기
+BFS 두번으로 바꾸기
+*/
+
 
 void BFS_host(pool P)
 {
     int* h_p_frontier_tail=&P.h_visited[2*P.numVertex];
-    *h_p_frontier_tail = 2;
+    *h_p_frontier_tail = 1;
+    
+    int* h_p_frontier_tail1=&P.h_visited[2*P.numVertex+1];
+    *h_p_frontier_tail1 = 1;
 
-    int S = P.source<<1;
-    int T = (P.target<<1)+1; 
+    int S = P.source;
+    int T = P.target; 
     int i; int k; int * temp;
     int num_blocks = ((2*P.numVertex)+BLOCK_SIZE-1) / BLOCK_SIZE;
-    memset_kernel<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(S, T, P.d_label, P.d_frontier, P.numVertex, P.d_p_frontier_tail);
+    memset_kernel<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(S, T, P.d_label, P.d_frontier, P.numVertex, P.d_p_frontier_tail, P.d_frontier1, P.d_p_frontier_tail1);
 
     for (i=0;i<2*P.numVertex;i++) {
         if(P.h_visited[i]!=-1)
@@ -24,14 +33,23 @@ void BFS_host(pool P)
 
     int *d_c_frontier = &P.d_frontier[0];
     int *d_p_frontier = &P.d_frontier[P.numVertex];
-    int check=0; 
-    while (*h_p_frontier_tail > 0&&check==0) { 
+    int *d_c_frontier1 = &P.d_frontier1[0];
+    int *d_p_frontier1 = &P.d_frontier1[P.numVertex];
 
-        num_blocks = (*h_p_frontier_tail+BLOCK_SIZE-1) / BLOCK_SIZE;
+    int check=0;
+    int turn=0; //S부터 T부터
+    while ((*h_p_frontier_tail + *h_p_frontier_tail1) > 0&&check==0) { 
 
-        BFS_Bqueue<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited, P.d_label1, P.d_visited1);
-
-        CUDA_CHECK(cudaMemcpyAsync(P.h_label, P.d_label, (4*P.numVertex+1)*sizeof(int), cudaMemcpyDeviceToHost,P.stream)); 
+        
+        if(turn%2==0){
+            num_blocks = (*h_p_frontier_tail+BLOCK_SIZE-1) / BLOCK_SIZE;
+            BFS_noqueue<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier, P.d_p_frontier_tail,d_c_frontier, P.d_c_frontier_tail, P.d_edges, P.d_dest, P.d_label, P.d_visited);
+        }
+        else{
+            num_blocks = (*h_p_frontier_tail1+BLOCK_SIZE-1) / BLOCK_SIZE;
+            BFS_noqueue<<<num_blocks, BLOCK_SIZE,0,P.stream>>>(d_p_frontier1, P.d_p_frontier_tail1,d_c_frontier1, P.d_c_frontier_tail1, P.d_edges, P.d_dest, P.d_label1, P.d_visited1);
+        }
+        CUDA_CHECK(cudaMemcpyAsync(P.h_label, P.d_label, (4*P.numVertex+2)*sizeof(int), cudaMemcpyDeviceToHost,P.stream)); 
         cudaDeviceSynchronize();
 
 
@@ -39,7 +57,7 @@ void BFS_host(pool P)
         for(k=0;k<P.numVertex;k++){
             if(P.h_visited[k]==1&&P.h_visited1[k]==1&&k!=P.source&&k!=P.target){
                 check=1;
-                // printf("\n");
+                // printf("%d\n", turn);
                 // for(k=0;k<P.numVertex;k++){
                 //     printf("%2d ", P.h_label[k]);
                 // }
@@ -61,10 +79,17 @@ void BFS_host(pool P)
                 break;
             }
         } 
-        temp = d_c_frontier;
-        d_c_frontier = d_p_frontier;
-        d_p_frontier = temp;
-
+        if(turn%2==0){
+            temp = d_c_frontier;
+            d_c_frontier = d_p_frontier;
+            d_p_frontier = temp;
+        }
+        else{
+            temp = d_c_frontier1;
+            d_c_frontier1 = d_p_frontier1;
+            d_p_frontier1 = temp;
+        }
+        turn++;
 
     }
 
@@ -124,18 +149,19 @@ int degree(int* dest,int* edges,int source){
     return edges[source+1]-edges[source];
 } 
 
-__global__ void memset_kernel(int S, int T, int* d_label,int* d_frontier,int numVertex,int* d_p_frontier_tail){
+__global__ void memset_kernel(int S, int T, int* d_label,int* d_frontier,int numVertex,int* d_p_frontier_tail, int* d_frontier1, int* d_p_frontier_tail1){
 
     const int tid = blockIdx.x*blockDim.x + threadIdx.x;
     if (tid < numVertex*2) {
         *(d_label+tid) = -1;
-        *(d_frontier+tid) =0;
-        if (tid==(S>>1)||tid==(T>>1)+numVertex) {
+        *(d_frontier+tid) =0; *(d_frontier1+tid) =0;
+        if (tid==S||tid==T+numVertex) {
             *(d_label+tid) = 0;
                 }
         if (tid ==numVertex) *(d_frontier+tid) = S;
-        if (tid ==numVertex+1) *(d_frontier+tid) = T;
-                *(d_p_frontier_tail) =2;
+        if (tid ==numVertex+1) *(d_frontier1+tid-1) = T;
+        *(d_p_frontier_tail) =1;
+        *(d_p_frontier_tail1) =1;
     }
 
 }
@@ -160,9 +186,13 @@ pool init_pool(int elen, int dlen, int* devmem, int* d_edges){
     P.d_visited=&(devmem[2*P.numVertex]);
     P.d_visited1=&(devmem[3*P.numVertex]);
 
-    P.d_frontier=&(devmem[4*P.numVertex+1]);
-    P.d_c_frontier_tail=&(devmem[6*P.numVertex+1]);
+
+    P.d_frontier=&(devmem[4*P.numVertex+2]);
+    P.d_frontier1=&(devmem[6*P.numVertex+4]);
+    P.d_c_frontier_tail=&(devmem[6*P.numVertex+2]);
     P.d_p_frontier_tail=&(devmem[4*P.numVertex]);
+    P.d_c_frontier_tail1=&(devmem[6*P.numVertex+3]);
+    P.d_p_frontier_tail1=&(devmem[4*P.numVertex+1]);
 
     P.h_returned=(int*)malloc(sizeof(int));
     P.source=0;
@@ -262,58 +292,27 @@ void compute(int* h_dest,int * h_edges, pool P,FILE* fp1){
     // free(exclude_T);
 }
 
-__global__ void BFS_Bqueue(int* p_frontier, int* p_frontier_tail, int* c_frontier, int* c_frontier_tail, int* edges, int* dest, int* label, int* visited, int* label1, int* visited1){
-    __shared__ int c_frontier_s[BLOCK_QUEUE_SIZE];
-    __shared__ int c_frontier_tail_s, our_c_frontier_tail; 
-    int * thisvisited;
-    int * thislabel;
-    if (threadIdx.x == 0)
-        c_frontier_tail_s = 0;
-    __syncthreads(); 
+__global__ void BFS_noqueue(int* p_frontier, int* p_frontier_tail, int* c_frontier, int* c_frontier_tail, int* edges, int* dest, int* label, int* visited){
 
     const int tid = blockIdx.x*blockDim.x + threadIdx.x;
     if (tid < *p_frontier_tail) {
-        const int my_vertex = p_frontier[tid]>>1;
-        const int my_state = p_frontier[tid]&1;
-        if(my_state==1){
-            thislabel = label1;
-            thisvisited = visited1;
-        }
-        else{
-            thislabel = label;
-            thisvisited = visited;
-        }
+        const int my_vertex = p_frontier[tid];
+
         for (int i = edges[my_vertex]; i < edges[my_vertex+1]; i++) {
             int was_visited=2;
-            if(thisvisited[dest[i]]!=-1)
-                was_visited = atomicExch(&(thisvisited[dest[i]]), 1);
+            if(visited[dest[i]]!=-1)
+                was_visited = atomicExch(&(visited[dest[i]]), 1);
             if (!was_visited) {
-                thislabel[dest[i]] = thislabel[my_vertex] + 1;
-                const int my_tail = atomicAdd(&c_frontier_tail_s, 1);
-                if (my_tail < BLOCK_QUEUE_SIZE) {
-                    c_frontier_s[my_tail] = (dest[i]<<1)+my_state;
-                }
-                else {
-                    c_frontier_tail_s = BLOCK_QUEUE_SIZE;
-                    const int my_global_tail = atomicAdd(c_frontier_tail, 1);
-                    c_frontier[my_global_tail] = (dest[i]<<1)+my_state;
-                }
+                label[dest[i]] = label[my_vertex] + 1;
+                const int my_tail = atomicAdd(c_frontier_tail, 1);
+                c_frontier[my_tail] = (dest[i]);
             }
         }
-    }
-    __syncthreads(); 
-
-    if (threadIdx.x == 0) {
-        our_c_frontier_tail = atomicAdd(c_frontier_tail, c_frontier_tail_s);
-    }
-    __syncthreads(); 
-
-    for (int i = threadIdx.x; i < c_frontier_tail_s; i += blockDim.x) {
-        c_frontier[our_c_frontier_tail + i] = c_frontier_s[i];
     }
     __syncthreads();
     if (tid == 0) {
         *p_frontier_tail = atomicExch(c_frontier_tail, 0);
+
     }
 } 
 

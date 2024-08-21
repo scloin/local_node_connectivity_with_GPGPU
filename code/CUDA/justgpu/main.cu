@@ -1,4 +1,4 @@
-#include <revise4t.hpp>
+#include <justgpu.hpp>
 #define BLOCK_SIZE 512
 #define BLOCK_QUEUE_SIZE 512
 
@@ -16,13 +16,9 @@ int main(){
 
     fscanf(fp, "%d ", &dlen);
     fscanf(fp, "%d ", &elen);
-<<<<<<< HEAD
     int *h_data;
     h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
     //CUDA_CHECK(cudaMallocHost((void**)&h_data, (elen+dlen)*sizeof(int)));
-=======
-    int *h_data = (int*)malloc((elen+dlen)*sizeof(int)); 
->>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
     h_edges= h_data;
     h_dest= &h_data[elen];
     int k =0;
@@ -48,10 +44,10 @@ int main(){
     int* devmem3;
     int* d_edges;
     CUDA_CHECK(cudaMalloc((void**)&d_edges, (elen+dlen)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem1, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem2, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem3, (6*(elen-1)+2)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem, (8*(elen-1)+4)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem1, (8*(elen-1)+4)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem2, (8*(elen-1)+4)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem3, (8*(elen-1)+4)*sizeof(int)));
 
     pool P0 = init_pool(elen, dlen, devmem, d_edges);
     pool P1 = init_pool(elen, dlen, devmem1, d_edges);
@@ -59,14 +55,13 @@ int main(){
     pool P3 = init_pool(elen, dlen, devmem3, d_edges);
     CUDA_CHECK(cudaMemcpy(d_edges, h_edges, (dlen+elen)*sizeof(int), cudaMemcpyHostToDevice)); 
     thread t0, t1, t2, t3;
-    FILE* fp1 = fopen("result/addthread.txt","w"); 
+    FILE* fp1 = fopen("result/frontier.txt","w"); 
 
     ///////////////////////////////////////////////////////
     /*compute*/
     P0.target=P0.source+1;
     P1.target=P0.source+2;
     P2.target=P0.source+3;
-<<<<<<< HEAD
     P3.target=P0.source+4;
     P1.source=P0.source; 
     P2.source=P0.source;
@@ -80,18 +75,6 @@ int main(){
     t2.join();
     t3.join();
 
-=======
-    P1.source=P0.source; 
-    P2.source=P0.source;
-
-    t0=thread{compute,h_dest,h_edges,P0,fp1};
-    t1=thread{compute,h_dest,h_edges,P1,fp1};
-    t2=thread{compute,h_dest,h_edges,P2,fp1};
-    t0.join();
-    t1.join();
-    t2.join();
-
->>>>>>> beeae6054c79a5b3d5057253c7de5bd990b5e31f
     fclose(fp1);
 
     ///////////////////////////////////////////////////////
@@ -106,15 +89,14 @@ int main(){
     CUDA_CHECK( cudaStreamDestroy(P2.stream));
     CUDA_CHECK( cudaStreamDestroy(P3.stream));
     free(h_data);
-    free(P0.h_label);
     free(P0.h_returned);
-    free(P1.h_label);
     free(P1.h_returned);
-    free(P2.h_label);
-    free(P2.h_returned);
-    free(P3.h_label);
+    free(P2.h_returned);    
     free(P3.h_returned);
-    //cudaFreeHost(h_data);
+    cudaFreeHost(P0.h_label);
+    cudaFreeHost(P1.h_label);
+    cudaFreeHost(P2.h_label);
+    cudaFreeHost(P3.h_label);
     cudaDeviceReset();
     return 0;
 } 

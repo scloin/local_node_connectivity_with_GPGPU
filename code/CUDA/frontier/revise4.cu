@@ -176,7 +176,9 @@ int main(){
     for (int i=0;i<2*P.numVertex;i++) {
         P.h_visited[i] =0;
         }
+        break;
     } 
+    break;
 
     P.source++;}
     fclose(fp1); 

@@ -1,11 +1,11 @@
-home=/home/deepl/sooho/test/K-com/test/code
+home=/home/deepl/sooho/local_node_connectivity_with_GPGPU/code
 
 #default value
 N=20
 P=0.4
 S=20
 
-while getopts n:s:p:c: opt # if first argument str length is not 0
+while getopts n:s:p: opt # if first argument str length is not 0
 do
   #echo $1
   case ${opt} in
@@ -15,22 +15,35 @@ do
     esac
 done
 
-python ${home}/python/gengraph.py ${N} ${P} ${S}
+for i in {1..5}
+do
 
-time0=$({ time ${home}/exec/frontier_thd >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
-time1=$({ time ${home}/exec/frontier >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
-time2=$({ time python ${home}/python/pyver.py >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
-time3=$({ time ${home}/exec/no_frontier >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
+NN=$((100 * i + N))
+# NN=$N
 
-echo "no_frontier   (${time3})"
-echo "frontier_thd  (${time0})"
-echo "frontier      (${time1})"
-echo "python        (${time2})"
+python3 ${home}/python/gengraph.py ${NN} ${P} ${S}
 
-python ${home}/python/sort.py ${N}
+echo "=====${NN} ${P} ${S}"
 
-DD1=$(diff -y --suppress-common-lines result/no_frontier.txt result/original.txt | wc -l)
-echo "diff no_frontier: ${DD1}"
+# time0=$({ time ${home}/exec/frontier_thd >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
+# echo "VTG ${time0}"
 
-DD1=$(diff -y --suppress-common-lines result/pyver.txt result/original.txt | wc -l)
-echo "diff between pyver: ${DD1}"
+# time2=$({ time python3 ${home}/python/pyver.py >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
+# echo "CPU ${time2}"
+
+# time3=$({ time ${home}/exec/no_frontier >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
+# echo "FTG ${time3}"
+
+time3=$({ time ${home}/exec/justgpu >/dev/null; } 2>&1 | grep real | grep -o '[[:digit:]].*$')
+echo "GPU ${time3}"
+
+echo " "
+
+done
+# python3 ${home}/python/sort.py ${N}
+
+# DD1=$(diff -y --suppress-common-lines result/no_frontier.txt result/pyver.txt | wc -l)
+# echo "diff no_frontier: ${DD1}"
+
+# DD1=$(diff -y --suppress-common-lines result/pyver.txt result/frontier.txt | wc -l)
+# echo "diff between pyver: ${DD1}"

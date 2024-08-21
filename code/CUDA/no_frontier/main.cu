@@ -44,10 +44,10 @@ int main(){
     int* devmem3;
     int* d_edges;
     CUDA_CHECK(cudaMalloc((void**)&d_edges, (elen+dlen)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem1, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem2, (6*(elen-1)+2)*sizeof(int)));
-    CUDA_CHECK(cudaMalloc((void**)&devmem3, (6*(elen-1)+2)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem, (4*(elen-1)+1)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem1, (4*(elen-1)+1)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem2, (4*(elen-1)+1)*sizeof(int)));
+    CUDA_CHECK(cudaMalloc((void**)&devmem3, (4*(elen-1)+1)*sizeof(int)));
 
     pool P0 = init_pool(elen, dlen, devmem, d_edges);
     pool P1 = init_pool(elen, dlen, devmem1, d_edges);
@@ -89,15 +89,19 @@ int main(){
     CUDA_CHECK( cudaStreamDestroy(P2.stream));
     CUDA_CHECK( cudaStreamDestroy(P3.stream));
     free(h_data);
-    free(P0.h_label);
+    // free(P0.h_label);
+    // free(P1.h_label);
+    // free(P2.h_label);
+    // free(P3.h_label);
+    
     free(P0.h_returned);
-    free(P1.h_label);
     free(P1.h_returned);
-    free(P2.h_label);
-    free(P2.h_returned);
-    free(P3.h_label);
+    free(P2.h_returned);    
     free(P3.h_returned);
-    //cudaFreeHost(h_data);
+    cudaFreeHost(P0.h_label);
+    cudaFreeHost(P1.h_label);
+    cudaFreeHost(P2.h_label);
+    cudaFreeHost(P3.h_label);
     cudaDeviceReset();
     return 0;
 } 

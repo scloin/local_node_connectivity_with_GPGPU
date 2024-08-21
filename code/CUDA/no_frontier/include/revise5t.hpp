@@ -39,3 +39,5 @@ __global__ void memset_kernel2(int* d_label, int* d_visited, int S, int T, int N
 __global__ void BFS_less_atomic(int* d_edges, int* d_dest, int* d_label, int* d_visited, int numVertex, int level);
 
 ////////////////////////////
+
+void compute_test(int* h_dest,int * h_edges, pool P);
